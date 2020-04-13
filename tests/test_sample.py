@@ -37,7 +37,7 @@ def test_client_constructor():
 
     assert client.client_id == test_client_id
     assert client.client_secret == test_client_secret
-    assert client.private_key_location == '/Users/konos/.ssh/private.key'
+    assert client.private_key_location == os.path.join(os.path.expanduser('~'), '.ssh/private.key')
     assert client.account_id == test_account_id
 
     assert client.experience_cloud_metascope == 'https://ims-na1.adobelogin.com/s/ent_analytics_bulk_ingest_sdk'
