@@ -102,8 +102,11 @@ def test_failed_access_token(mocker):
     error_message = {'error_description': 'JWT token is incorrectly formatted, and can not be decoded.',
                     'error': 'invalid_token'}
     # TODO: write test case
-    pass
+    assert 1 == 2
 
+def test_incorrect_api_response(mocker):
+
+    assert 1 == 2
 
 def test_get_request_headers(mocker):
     
@@ -177,3 +180,19 @@ def test_dimension_set():
     client.set_dimension(test_dimension_name)
 
     assert test_dimension_name == client.report_object['dimension']
+
+def test_get_page():
+    
+    assert False
+
+def test_get_report():
+
+    assert False
+
+def test_get_metrics():
+
+    assert False
+
+def test_format_output():
+
+    assert False
