@@ -6,7 +6,8 @@ import json
 import jwt
 import os
 import pytest
-from src.adobe_api.adobe_api import aa_client
+# from src.adobe_api.adobe_api import aa_client
+from src.analytics.mayhem.adobe import analytics_client
 import pandas as pd
 
 test_adobe_org_id= 'fake_org_id'
@@ -18,7 +19,7 @@ test_access_token = 'fake_access_token'
 test_report_suite_id = 'fake_rsid'
 
 def _generate_adobe_client():
-    client = aa_client(
+    client = analytics_client(
         adobe_org_id= test_adobe_org_id, 
         subject_account = test_subject_account, 
         client_id = test_client_id ,
@@ -58,7 +59,7 @@ def test_empty_report_object():
             },
             "dimension": ""
         }
-    actual_report_object = aa_client._generate_empty_report_object()
+    actual_report_object = analytics_client._generate_empty_report_object()
     assert actual_report_object == expected_report_object
 
 def test_jwtPayload():
@@ -237,7 +238,104 @@ def test_get_metrics():
     # import pdb; pdb.set_trace()
     assert expected_metrics.equals(client._get_metrics())
 
-def test_format_output():
+def test_format_output(mocker):
 
-    # TODO: write test case
-    pass
+    test_request_object = {
+        "rsid":"adbedocrsid",
+        "globalFilters":[
+            {
+                    "type":"dateRange",
+                    "dateRange":"2017-12-31T00:00:00.000/2018-01-06T23:59:59.999"
+            }
+        ],
+        "metricContainer":{
+            "metrics":[
+                {
+                    "columnId":"0",
+                    "id":"metrics/pageviews",
+                    "filters":[
+                    "0"
+                    ]
+                }
+            ],
+            "metricFilters":[
+                {
+                    "id":"0",
+                    "type":"dateRange",
+                    "dateRange":"2017-12-31T00:00:00.000/2018-01-06T23:59:59.999"
+                }
+            ]
+        },
+        "dimension":"variables/daterangeday",
+        "settings":{
+                "dimensionSort":"asc"
+            }
+        }
+    
+    test_response_text = {
+        "totalPages":1,
+        "firstPage":True,
+        "lastPage":False,
+        "numberOfElements":7,
+        "number":0,
+        "totalElements":7,
+        "columns":{
+            "dimension":{
+                "id":"variables/daterangeday",
+                "type":"time"
+            },
+            "columnIds":[
+                "0"
+            ]
+        },
+        "rows":[
+            {
+                "itemId":"1171131",
+                "value":"Dec 31, 2017",
+                "data":[
+                    794.0
+                ]
+            },
+            {
+                "itemId":"1180001",
+                "value":"Jan 1, 2018",
+                "data":[
+                    16558.0
+                ]
+            },
+            {
+                "itemId":"1180002",
+                "value":"Jan 2, 2018",
+                "data":[
+                    17381.0
+                ]
+            }
+        ],
+        "summaryData":{
+            "totals":[
+                104310.0
+            ]
+        }
+        }
+
+    client = _generate_adobe_client()
+    client.report_object = test_request_object
+
+   
+
+    value = ['Dec 31, 2017', 'Jan 1, 2018', 'Jan 2, 2018']    
+    metric = [794.0, 16558.0 , 17381.0]
+    dt = {'value' : value, 'metrics/pageviews' : metric}
+    expected_value = pd.DataFrame(data = dt)
+
+    # Generate fake response -
+    adapter = requests_mock.Adapter()
+    adapter.register_uri('POST', 'mock://success.com/', status_code = 200, text = json.dumps(test_response_text))
+
+    session = requests.Session()
+    session.mount('mock', adapter)
+    test_response_success = session.post('mock://success.com/')
+
+    assert expected_value.equals(client.format_output(test_response_success))
+
+
