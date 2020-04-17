@@ -29,5 +29,5 @@ jobs:
         pip install -r requirements.txt
     - name: Test with pytest
       run: |
-        pip install pytest requests_mock
+        pip install pytest==5.4.1 requests-mock==1.7.0 pytest-mock==3.0.0
         python -m pytest
