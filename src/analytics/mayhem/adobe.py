@@ -26,14 +26,7 @@ class analytics_client:
 
         self.analytics_url = "https://analytics.adobe.io/api/{}/reports".format(
             self.account_id)
-        '''
-        self.analytics_header = {           
-                    "X-Api-Key": self.client_id,
-                    "x-proxy-global-company-id": self.account_id,
-                    "Authorization" : "Bearer " + resultjson["access_token"],
-                    "Accept": "application/json",
-                    "Content-Type": "application/json"
-        } '''
+
         self.report_object = self._generate_empty_report_object()
 
     def _read_private_key(self):
@@ -91,7 +84,7 @@ class analytics_client:
     @staticmethod
     def _generate_empty_report_object():
         report = {
-            "rsid": "vodafonegroupukprod",
+            "rsid": "",
             "globalFilters": [
                 {
                     "type": "dateRange",
@@ -101,20 +94,7 @@ class analytics_client:
             "metricContainer": {
                 "metrics": []
             },
-            "dimension": "",
-            # "settings": {
-            #     "countRepeatInstances": 'true',
-            #     "limit": 400,
-            #     "page": 1,
-            #     "dimensionSort": "asc",
-            #     "nonesBehavior": "return-nones"
-            # },
-            # "statistics": {
-            #     "functions": [
-            #         "col-max",
-            #         "col-min"
-            #     ]
-            # }
+            "dimension": ""
         }
         return report
 

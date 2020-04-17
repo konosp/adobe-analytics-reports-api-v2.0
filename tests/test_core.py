@@ -47,20 +47,20 @@ def test_client_constructor():
 
 def test_empty_report_object():
     expected_report_object = {
-            "rsid": "vodafonegroupukprod",
+            "rsid": '',
             "globalFilters": [
                 {
                     "type": "dateRange",
-                    "dateRange": ""
+                    "dateRange": ''
                 }
             ],
             "metricContainer": {
                 "metrics": []
             },
-            "dimension": ""
+            "dimension": ''
         }
     actual_report_object = analytics_client._generate_empty_report_object()
-    assert actual_report_object == expected_report_object
+    assert expected_report_object == actual_report_object
 
 def test_jwtPayload():
     client = _generate_adobe_client()
