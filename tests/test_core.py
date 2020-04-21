@@ -225,6 +225,13 @@ def test_get_report():
     # TODO: write test case
     pass
 
+def test_no_results():
+    # TODO: write test case for when no results are returned
+    '''
+    {"totalPages":0,"firstPage":true,"lastPage":false,"numberOfElements":0,"number":0,"totalElements":0,"columns":{"dimension":{"id":"variables/evar65","type":"string"},"columnIds":["0","1","2"]},"rows":[],"summaryData":{"filteredTotals":[0.0,0.0,0.0],"totals":[0.0,0.0,0.0]}}
+    '''
+    pass
+
 def test_get_metrics():
 
     client = _generate_adobe_client()
@@ -324,8 +331,9 @@ def test_format_output(mocker):
    
 
     value = ['Dec 31, 2017', 'Jan 1, 2018', 'Jan 2, 2018']    
+    ids = ['1171131', '1180001', '1180002']
     metric = [794.0, 16558.0 , 17381.0]
-    dt = {'value' : value, 'metrics/pageviews' : metric}
+    dt = {'itemId': ids , 'value' : value, 'metrics/pageviews' : metric}
     expected_value = pd.DataFrame(data = dt)
 
     # Generate fake response -

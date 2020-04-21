@@ -1,5 +1,6 @@
 from datetime import datetime
 from datetime import timedelta
+import time
 import json
 import jwt
 import os
@@ -125,21 +126,34 @@ class analytics_client:
     def set_report_suite(self, report_suite_id):
         self.report_object['rsid'] = report_suite_id
 
-    def _get_page(self):
+    def _get_page(self, report_object = None):
         '''
         Performs post request to the reporting API.
         Returns a standard response object.
         '''
+        if report_object is None:
+            report_object = self.report_object
+
         analytics_header = self._get_request_headers()
-        page = requests.post(
-            self.analytics_url,
-            headers=analytics_header,
-            data=json.dumps(self.report_object),
-        )
+        
+        status_code = None
+        while status_code != 200:
+            
+            page = requests.post(
+                self.analytics_url,
+                headers=analytics_header,
+                data=json.dumps(report_object)
+            )
 
-        if (page.status_code != 200):
-            raise ValueError('Response code error', page.text)
+            if (page.status_code == 429050):
+                print('Response code error: {}'.format(page.text))
+                print('Delaying for 5 seconds next request')
+                time.sleep(5)
+            elif (page.status_code != 200):
+                raise ValueError('Response code error', page.text)
 
+            status_code = page.status_code
+            
         return page
 
     def get_report(self):
@@ -195,7 +209,7 @@ class analytics_client:
         df_metrics_data.rename(columns=lambda x: metricNames[metricNames.index == '{}'.format(
             x)].iloc[0][0], inplace=True)
 
-        return pd.merge(df_response_data, df_metrics_data, left_index=True, right_index=True).drop(columns=['itemId', 'data'])
+        return pd.merge(df_response_data, df_metrics_data, left_index=True, right_index=True).drop(columns=['data'])
 
     def add_metric(self, metric_name):
         metric = self._generate_metric_structure()
