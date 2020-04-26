@@ -133,7 +133,7 @@ def test_format_date_range():
     #Case 1: different dates
     start_date ='2017-01-31'
     end_date = '2020-12-31'
-    expected_date_format = '2017-01-31T00:00:00/2020-12-31T23:59:59'
+    expected_date_format = '2017-01-31T00:00:00/2021-01-01T00:00:00'
 
     assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
     
@@ -141,9 +141,9 @@ def test_format_date_range():
     assert client.report_object['globalFilters'][0]['dateRange'] == expected_date_format
 
     #Case 2: Same dates
-    start_date = '2017-01-31'
+    start_date = '2020-01-31'
     end_date = '2020-01-31'
-    expected_date_format = '2017-01-31T00:00:00/2020-01-31T23:59:59'
+    expected_date_format = '2020-01-31T00:00:00/2020-02-01T00:00:00'
 
     assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
 
@@ -243,13 +243,8 @@ def test_no_results(mocker):
 
     page = client._get_page()
 
-    import pdb; pdb.set_trace()
-
     assert page.status_code == 200
-    assert page.text == test_response_text_success   
-
-    client.format_output()
-    pass
+    assert page.text == no_results_json   
 
 def test_get_metrics():
 
