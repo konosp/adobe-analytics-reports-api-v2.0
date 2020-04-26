@@ -264,42 +264,47 @@ class analytics_client:
         current_dimensions = []
         # Download 1st level data
         df_page = self.get_report()
-        # Reformat column names
         level = 1
-        df_page = df_page.filter(regex='^itemId|^value', axis = 'columns').rename(
-            columns = {'itemId' : 'itemId_lvl_{}'.format(level),'value' : 'value_lvl_{}'.format(level)})
-        
+
         dim_index = 1
         remaining_dimensions = list(self.dimensions)
         remaining_dimensions.pop(0)
+
+        # Re-format column names
+        if (len(remaining_dimensions) > 0):
+            df_page = df_page.filter(regex='^itemId|^value', axis = 'columns')
+        
+        df_page = df_page.rename(
+                columns = {'itemId' : 'itemId_lvl_{}'.format(level),'value' : 'value_lvl_{}'.format(level)})    
+        
         for breakdown in remaining_dimensions:
             level = level + 1
             dim_index = dim_index + 1
-            
             current_dimensions.append(breakdown)
-            print('Current Dimension: {}'.format(current_dimensions))
             
             results_broken_down = df_page.apply(self.get_report_breakdown, axis = 1 , dimensions = current_dimensions, current_level = level)
-            print('returned from breakdown')
             dl = []
             for i in results_broken_down:
                 dl.append(i)
             
-            # if len(current_dimensions)>1:
-            #    import pdb;pdb.set_trace()
-
             results_broken_down = pd.concat(dl, ignore_index=True)
+
+            df_page = df_page.filter(regex='^itemId|^value', axis = 'columns')
             df_page = pd.merge(df_page, results_broken_down, how = 'right')
             
         return df_page
 
     def get_report_breakdown(self, df_page, dimensions, current_level = None):
+        
         tmp_report_object = self.report_object
-        parent_itemId = df_page['itemId_lvl_{}'.format(current_level - 1)]
         
-        for dimension in dimensions:
+        item_ids = df_page.filter(regex='^itemId').sort_values().array
+        
+        for idx in range(len(dimensions)):
+            dimension = dimensions[idx]
+            parent_itemId = item_ids[idx]
             tmp_report_object = self._add_breakdown_report_object(tmp_report_object, dimension, parent_itemId)
-        
+
         results = self.get_report(custom_report_object=tmp_report_object)
         # The itemId in the results is set to minus 1 to match with the parent ID during the merge
         for key in df_page.keys():
