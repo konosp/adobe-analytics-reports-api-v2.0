@@ -205,7 +205,6 @@ def test_get_page(mocker, monkeypatch):
     test_response_fail = session.post('mock://fail.com/')
     test_response_success = session.post('mock://success.com/')
 
-    
     # Patch request and fail response
     mocker.patch("requests.post", return_value = test_response_fail)
 
@@ -221,15 +220,35 @@ def test_get_page(mocker, monkeypatch):
     assert page.text == test_response_text_success   
 
 def test_get_report():
-
     # TODO: write test case
     pass
 
-def test_no_results():
+def test_no_results(mocker):
     # TODO: write test case for when no results are returned
-    '''
-    {"totalPages":0,"firstPage":true,"lastPage":false,"numberOfElements":0,"number":0,"totalElements":0,"columns":{"dimension":{"id":"variables/evar65","type":"string"},"columnIds":["0","1","2"]},"rows":[],"summaryData":{"filteredTotals":[0.0,0.0,0.0],"totals":[0.0,0.0,0.0]}}
-    '''
+    client = _generate_adobe_client()
+    client._get_request_headers = mocker.Mock(return_value = 'test headers')
+
+    no_results_json = '{"totalPages":0,"firstPage":true,"lastPage":false,"numberOfElements":0,"number":0,"totalElements":0,"columns":{"dimension":{"id":"variables/evar65","type":"string"},"columnIds":["0","1","2"]},"rows":[],"summaryData":{"filteredTotals":[0.0,0.0,0.0],"totals":[0.0,0.0,0.0]}}'
+
+    # Generate fake response -
+    adapter = requests_mock.Adapter()
+    adapter.register_uri('POST', 'mock://test.com/', status_code = 200, text = no_results_json)
+    
+    session = requests.Session()
+    session.mount('mock', adapter)
+    test_response = session.post('mock://test.com/')
+    
+    # Patch request and fail response
+    mocker.patch("requests.post", return_value = test_response)
+
+    page = client._get_page()
+
+    import pdb; pdb.set_trace()
+
+    assert page.status_code == 200
+    assert page.text == test_response_text_success   
+
+    client.format_output()
     pass
 
 def test_get_metrics():

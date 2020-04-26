@@ -166,10 +166,12 @@ class analytics_client:
         date_start = date_start.isoformat('T')
 
         date_end = datetime.strptime(date_end, '%Y-%m-%d')
-        date_end = date_end + \
-            timedelta(hours=23, minutes=59, seconds=59, milliseconds=999)
+        # date_end = date_end + \
+        #     timedelta(hours=23, minutes=59, seconds=59, milliseconds=999)
+        date_end = date_end + timedelta(hours=24, minutes=00, seconds=00, milliseconds=999)
         date_end = date_end.isoformat('T')
         final_date = '{}/{}'.format(date_start[:-7], date_end[:-7])
+        print(final_date)
         return final_date
 
     def set_report_suite(self, report_suite_id):
@@ -209,6 +211,7 @@ class analytics_client:
         analytics_header = self._get_request_headers()
         
         status_code = None
+        time_delay = 1
         while status_code != 200:
             
             page = requests.post(
@@ -219,8 +222,9 @@ class analytics_client:
 
             if (page.status_code == 429050):
                 print('Response code error: {}'.format(page.text))
-                print('Delaying for 5 seconds next request')
-                time.sleep(5)
+                print('Delaying for next request')
+                time.sleep(time_delay)
+                time_delay = time_delay * 2
             elif (page.status_code != 200):
                 raise ValueError('Response code error', page.text)
 
@@ -229,7 +233,7 @@ class analytics_client:
         return page
 
     def get_report(self):
-        self.set_page_number(0)
+        self._set_page_number(0)
         # Get initial page
         data = self._get_page()
         json_obj = json.loads(data.text)
@@ -237,8 +241,10 @@ class analytics_client:
         current_page = 1
         is_last_page = False
         df_data = self.format_output(data)
+
+        # Download additional data if more than 1 page are available
         while (total_pages > 1 and not is_last_page):
-            self.set_page_number(current_page)
+            self._set_page_number(current_page)
             data = self._get_page()
             json_obj = json.loads(data.text)
             is_last_page = json_obj['lastPage']
@@ -287,10 +293,27 @@ class analytics_client:
         # Convert to DF to easily obtain the data column
         df_response_data = pd.DataFrame(data.json()['rows'])
         # Convert metrics to DF into dedicated columns. Column header is the metric ID
-        df_metrics_data = pd.DataFrame(df_response_data.data.tolist(), index=df_response_data.index)
+        if data.json()['totalPages'] > 0:
+            metrics_column = df_response_data.data.tolist()
+            df_metrics_data = pd.DataFrame(metrics_column, index=df_response_data.index)
+        else:
+            
+            metrics_column = []
+            
+            idx = data.json()['columns']['columnIds']
+            for i in idx:
+                metrics_column.append(0)
+            df_response_data = pd.DataFrame({'itemId': '0', 'value': 'Unspecified', 'data': metrics_column })
+            
+            metrics_column = [metrics_column]
+            df_metrics_data = pd.DataFrame(metrics_column)
+            
+
+#             import pdb; pdb.set_trace()
+       
+        print(df_metrics_data)
         # Rename metrics' column headers into the metric name, based on the metric ID
-        df_metrics_data.rename(columns=lambda x: metricNames[metricNames.index == '{}'.format(
-            x)].iloc[0][0], inplace=True)
+        df_metrics_data.rename(columns=lambda x: metricNames[metricNames.index == '{}'.format(x)].iloc[0][0], inplace=True)
 
         return pd.merge(df_response_data, df_metrics_data, left_index=True, right_index=True).drop(columns=['data'])
 
@@ -342,7 +365,7 @@ class analytics_client:
     def set_limit(self, rows_limit):
         self._set_report_setting('limit', rows_limit)
 
-    def set_page_number(self, page_no):
+    def _set_page_number(self, page_no):
         self._set_report_setting('page', page_no)
 
     def _set_report_setting(self, setting_item, value):
