@@ -62,6 +62,7 @@ class analytics_client:
             self.account_id)
 
         self.report_object = self._generate_empty_report_object()
+        self.dimensions = []
 
     def _read_private_key(self):
         # Request Access Key
@@ -147,6 +148,9 @@ class analytics_client:
 
         The starting date and the ending date for the reporting period are formated in an API-compatible format.
         The final value is saved in the JSON report object.
+        Note: The end-date provided is inclusive. For that reason it is converted to the start of the next day. 
+
+        Example: If the report needs to end on 1st of March 2020, then the value is convered into 2020-03-02T00:00:00.000
         
         Parameters
         ----------
@@ -154,12 +158,12 @@ class analytics_client:
             Reporting period start date. Format: YYYY-MM-DD i.e. 2017-12-31. The value is converted to 2017-12-31T00:00:00.000
 
         date_end : string
-            Reporting period start date. Format: YYYY-MM-DD i.e. 2018-01-31. The value is converted to 2018-01-31T23:59:59.999
+            Reporting period start date. Format: YYYY-MM-DD i.e. 2018-01-31. The value is converted to 2018-02-01T00:00:00.000
 
         Returns
         -------
         string
-            The final formated value i.e. 2017-12-31T00:00:00.000/2018-01-06T23:59:59.999        
+            The final formated value i.e. 2017-12-31T00:00:00.000/2018-02-01T00:00:00.000        
         '''
         date_start = datetime.strptime(date_start, '%Y-%m-%d')
         date_start = date_start + timedelta(microseconds=1)
@@ -232,20 +236,20 @@ class analytics_client:
             
         return page
 
-    def get_report(self):
+    def get_report(self, custom_report_object = None):
         self._set_page_number(0)
         # Get initial page
-        data = self._get_page()
+        data = self._get_page(custom_report_object)
         json_obj = json.loads(data.text)
         total_pages = json_obj['totalPages']
         current_page = 1
         is_last_page = False
         df_data = self.format_output(data)
 
-        # Download additional data if more than 1 page are available
+        # Download additional data if more than 1 pages are available
         while (total_pages > 1 and not is_last_page):
             self._set_page_number(current_page)
-            data = self._get_page()
+            data = self._get_page(custom_report_object)
             json_obj = json.loads(data.text)
             is_last_page = json_obj['lastPage']
             current_page = current_page + 1
@@ -254,6 +258,58 @@ class analytics_client:
             df_data = df_data.append(df_current_page, ignore_index=True)
 
         return df_data
+
+    def get_report_multiple_breakdowns(self):
+        
+        current_dimensions = []
+        # Download 1st level data
+        df_page = self.get_report()
+        # Reformat column names
+        level = 1
+        df_page = df_page.filter(regex='^itemId|^value', axis = 'columns').rename(
+            columns = {'itemId' : 'itemId_lvl_{}'.format(level),'value' : 'value_lvl_{}'.format(level)})
+        
+        dim_index = 1
+        remaining_dimensions = list(self.dimensions)
+        remaining_dimensions.pop(0)
+        for breakdown in remaining_dimensions:
+            level = level + 1
+            dim_index = dim_index + 1
+            
+            current_dimensions.append(breakdown)
+            print('Current Dimension: {}'.format(current_dimensions))
+            
+            results_broken_down = df_page.apply(self.get_report_breakdown, axis = 1 , dimensions = current_dimensions, current_level = level)
+            print('returned from breakdown')
+            dl = []
+            for i in results_broken_down:
+                dl.append(i)
+            
+            # if len(current_dimensions)>1:
+            #    import pdb;pdb.set_trace()
+
+            results_broken_down = pd.concat(dl, ignore_index=True)
+            df_page = pd.merge(df_page, results_broken_down, how = 'right')
+            
+        return df_page
+
+    def get_report_breakdown(self, df_page, dimensions, current_level = None):
+        tmp_report_object = self.report_object
+        parent_itemId = df_page['itemId_lvl_{}'.format(current_level - 1)]
+        
+        for dimension in dimensions:
+            tmp_report_object = self._add_breakdown_report_object(tmp_report_object, dimension, parent_itemId)
+        
+        results = self.get_report(custom_report_object=tmp_report_object)
+        # The itemId in the results is set to minus 1 to match with the parent ID during the merge
+        for key in df_page.keys():
+            if ('_lvl_' in key):
+                results[key] = df_page[key]
+        results = results.rename(columns = {
+                'itemId' : 'itemId_lvl_{}'.format(current_level),
+                'value' : 'value_lvl_{}'.format(current_level)
+        })
+        return results
 
     def _get_metrics(self):
         '''
@@ -308,10 +364,6 @@ class analytics_client:
             metrics_column = [metrics_column]
             df_metrics_data = pd.DataFrame(metrics_column)
             
-
-#             import pdb; pdb.set_trace()
-       
-        print(df_metrics_data)
         # Rename metrics' column headers into the metric name, based on the metric ID
         df_metrics_data.rename(columns=lambda x: metricNames[metricNames.index == '{}'.format(x)].iloc[0][0], inplace=True)
 
@@ -326,11 +378,29 @@ class analytics_client:
 
         self.report_object['metricContainer']['metrics'].append(metric)
 
+    def add_dimension(self, dimension_name):
+        '''
+        Add a new dimension.
+
+        Add an extra dimension that will be used in the final results.
+        The order dimensions are added affect how results are reported.
+        
+        Parameters
+        ----------
+        dimension_name : string
+            Dimension name as expected by the Adobe API.
+
+        '''
+        self.dimensions.append(dimension_name)
+        if (len(self.report_object['dimension']) == 0):
+            self.set_dimension(dimension_name)
+
     def set_dimension(self, dimension_name, sort='asc'):
         '''
         Configure main dimension.
 
-        Configure the reporting dimension. This will be the top-level break down of the metrics.
+        Configure the reporting dimension. Used for single dimension reports.
+        This will be the top-level break down of the metrics.
         The value is added in the JSON report object used in the post request.
         
         Parameters
@@ -380,3 +450,35 @@ class analytics_client:
         if (key not in dict_obj):
             dict_obj[key] = {}
         return dict_obj
+
+    @staticmethod
+    def _add_breakdown_report_object(report_object, breakdown, item_id):
+        '''
+        When multiple breakdowns are added in a report, the JSON report object needs to be updated in each POST request.
+        Everytime the metricFilters and the main dimension are updated dynamically based on the itemId's
+        '''
+        report_object = json.loads(json.dumps(report_object))
+        original_breakdown = report_object['dimension']
+        if ('metricFilters' in report_object['metricContainer']):
+            metrics_filter_num = len(report_object['metricContainer']['metricFilters'])
+        else:
+            metrics_filter_num = 0
+            report_object['metricContainer']['metricFilters'] = []
+        
+        for metric in report_object['metricContainer']['metrics']:
+            metric_filter = {}
+            metric_filter['id'] = '{}'.format(metrics_filter_num)
+            metric_filter['type'] = 'breakdown'
+            metric_filter['dimension'] = original_breakdown
+            metric_filter['itemId'] = '{}'.format(item_id)
+            metrics_filter_num = metrics_filter_num + 1
+            
+            report_object['metricContainer']['metricFilters'].append(metric_filter)
+            
+            if 'filters' not in metric:
+                metric['filters'] = []
+            
+            metric['filters'].append(metric_filter['id'])
+        
+        report_object['dimension'] = breakdown
+        return report_object
