@@ -2,6 +2,7 @@ from datetime import datetime
 from datetime import timedelta
 import requests
 import requests_mock
+import time
 import json
 import jwt
 import os
@@ -102,9 +103,8 @@ def test_renew_access_token(mocker):
     assert ACCESS_TOKEN_VALUE == client._renew_access_token()
 
 def test_failed_access_token(mocker):
-    error_message = {'error_description': 'JWT token is incorrectly formatted, and can not be decoded.',
-                    'error': 'invalid_token'}
-    # TODO: write test case
+    error_message = "{'error_description': 'JWT token is incorrectly formatted, and can not be decoded.', 'error': 'invalid_token'}"
+    # TODO: Does this require testing?
     pass
 
 def test_incorrect_api_response(mocker):
@@ -177,7 +177,7 @@ def test_metric_add():
     client.add_metric(test_metric_name)
     assert expected_metric == client.report_object['metricContainer']['metrics'][1]
 
-def test_dimension_set():
+def test_set_dimension():
     client = _generate_adobe_client()
     test_dimension_name = 'variables/daterangeday'
 
@@ -187,7 +187,6 @@ def test_dimension_set():
 
 def test_get_page(mocker, monkeypatch):
     
-    # adapter = requests_mock.Adapter()
     # mock reading private key
     client = _generate_adobe_client()
     client._get_request_headers = mocker.Mock(return_value = 'test headers')
@@ -219,12 +218,34 @@ def test_get_page(mocker, monkeypatch):
     assert page.status_code == 200
     assert page.text == test_response_text_success   
 
+def test_get_page_too_many_requests(mocker, monkeypatch):
+    # mock reading private key
+    '''client = _generate_adobe_client()
+    client._get_request_headers = mocker.Mock(return_value = 'test headers')
+
+    test_response_text_fail = '{"error_code":"429050","message":"Too many requests"}'
+    
+    # Generate fake response -
+    adapter = requests_mock.Adapter()
+    adapter.register_uri('POST', 'mock://fail.com/', status_code = 429, text = test_response_text_fail)
+    
+    session = requests.Session()
+    session.mount('mock', adapter)
+    test_response_fail = session.post('mock://fail.com/')
+    
+    # Patch request with failed response
+    mocker.patch("requests.post", return_value = test_response_fail)
+
+    time.sleep = mocker.mock()
+    
+    assert time.sleep.assert_called_once_with(1)
+    '''
+
 def test_get_report():
     # TODO: write test case
-    pass
+    assert False
 
 def test_no_results(mocker):
-    # TODO: write test case for when no results are returned
     client = _generate_adobe_client()
     client._get_request_headers = mocker.Mock(return_value = 'test headers')
 
@@ -339,25 +360,63 @@ def test_format_output(mocker):
         }
         }
 
+    test_response_text_no_pages = {
+        "totalPages":0,
+        "firstPage":True,
+        "lastPage":False,
+        "numberOfElements":0,
+        "number":0,
+        "totalElements":0,
+        "columns":{
+            "dimension":{
+                "id":"variables/daterangeday",
+                "type":"time"
+            },
+            "columnIds":[
+                "0"
+            ]
+        },
+        "rows":[],
+        "summaryData":{
+            "totals":[]
+        }
+        }
+
     client = _generate_adobe_client()
     client.report_object = test_request_object
 
-   
-
+    # Expected value - with results
     value = ['Dec 31, 2017', 'Jan 1, 2018', 'Jan 2, 2018']    
     ids = ['1171131', '1180001', '1180002']
     metric = [794.0, 16558.0 , 17381.0]
     dt = {'itemId': ids , 'value' : value, 'metrics/pageviews' : metric}
     expected_value = pd.DataFrame(data = dt)
 
+    # Expected value - no results
+    value = ['Unspecified']    
+    ids = ['0']
+    metric = [0]
+    dt = {'itemId': ids , 'value' : value, 'metrics/pageviews' : metric}
+    expected_value_no_results = pd.DataFrame(data = dt)
+
     # Generate fake response -
     adapter = requests_mock.Adapter()
     adapter.register_uri('POST', 'mock://success.com/', status_code = 200, text = json.dumps(test_response_text))
+    adapter.register_uri('POST', 'mock://fail.com/', status_code = 200, text = json.dumps(test_response_text_no_pages))
 
     session = requests.Session()
     session.mount('mock', adapter)
     test_response_success = session.post('mock://success.com/')
+    test_response_success_no_results = session.post('mock://fail.com/')
 
     assert expected_value.equals(client.format_output(test_response_success))
+    assert expected_value_no_results.equals(client.format_output(test_response_success_no_results))
+    # Test empty results response
 
+def test_add_dimension():
+    client = _generate_adobe_client()
+    client.add_dimension('fake_dimension')
+    assert ['fake_dimension'] == client.dimensions
+    client.add_dimension('fake_dimension_2')
+    assert 'fake_dimension' == client.report_object['dimension']
 

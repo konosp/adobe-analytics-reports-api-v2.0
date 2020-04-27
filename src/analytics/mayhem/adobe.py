@@ -224,7 +224,7 @@ class analytics_client:
                 data=json.dumps(report_object)
             )
 
-            if (page.status_code == 429050):
+            if (page.status_code == 429):
                 print('Response code error: {}'.format(page.text))
                 print('Delaying for next request')
                 time.sleep(time_delay)
