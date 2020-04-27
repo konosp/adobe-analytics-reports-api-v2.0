@@ -175,7 +175,6 @@ class analytics_client:
         date_end = date_end + timedelta(hours=24, minutes=00, seconds=00, milliseconds=999)
         date_end = date_end.isoformat('T')
         final_date = '{}/{}'.format(date_start[:-7], date_end[:-7])
-        print(final_date)
         return final_date
 
     def set_report_suite(self, report_suite_id):
