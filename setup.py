@@ -6,7 +6,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="analytics_mayhem_adobe",
-    version="0.0.1",
+    version="0.0.2",
     author="Konstantinos Papadopoulos",
     author_email="info@analyticsmayhem.com",
     description="Manage Adobe Analytics Reports API v2 requests to build reports programmatically.",

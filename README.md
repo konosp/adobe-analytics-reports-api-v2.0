@@ -70,20 +70,21 @@ aa.add_metric(metric_name= 'metrics/visits')
 aa.add_metric(metric_name= 'metrics/orders')
 aa.add_metric(metric_name= 'metrics/event1')
 aa.add_dimension(dimension_name = 'variables/mobiledevicetype')
-aa.add_dimension(dimension_name = 'variables/mobiledevicetype')
+aa.add_dimension(dimension_name = 'variables/lasttouchchannel')
 aa.set_date_range(date_start = '2019-12-01', date_end= '2019-12-31')
 data = aa.get_report_multiple_breakdowns()
 ```
 Output:
 Each item in level 1 (i.e. Tablet) is broken down by the dimension in level 2 (i.e. Last Touch Channel). The package downloads all possible combinations. In a similar fashion more dimensions can be added.
-| itemId_lvl_1 | value_lvl_1 | itemId_lvl_2 |                value_lvl_2 | metrics/visits | metrics/orders  |metrics/event1 |
+
+| itemId_lvl_1 | value_lvl_1 | itemId_lvl_2 |  value_lvl_2 | metrics/visits | metrics/orders  | metrics/event1 |
 | --- | --- | --- | --- | --- | --- | --- |
-|         0 |       Other |            1 |                Paid Search      | 233        | 39  |    10 |
-|         0 |       Other |            2 |             Natural Search      | 424        | 12  |    412 |
-|         0 |       Other |            3 |                    Display        | 840           | 41  |      31 |
+|         0 |       Other |            1 |   Paid Search      | 233        | 39  |    10 |
+|         0 |       Other |            2 |   Natural Search      | 424        | 12  |    412 |
+|         0 |       Other |            3 |    Display        | 840           | 41  |      31 |
 | ... | ... | ... | ... | ... | ... | ... |
-| 1728229488 |      Tablet |            1 |                       Paid Search         | 80           | 12  |       41 |
-| 1728229488 |      Tablet |            2 |                Natural Search       | 50         | 41  |     21 |
+| 1728229488 |      Tablet |            1 | Paid Search         | 80           | 12  |       41 |
+| 1728229488 |      Tablet |            2 |   Natural Search       | 50         | 41  |     21 |
 | ... | ... | ... | ... | ... | ... | ... |
 
 ## Issues, Bugs and Suggestions:
