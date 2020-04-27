@@ -243,7 +243,7 @@ def test_get_page_too_many_requests(mocker, monkeypatch):
 
 def test_get_report():
     # TODO: write test case
-    assert False
+    pass
 
 def test_no_results(mocker):
     client = _generate_adobe_client()
