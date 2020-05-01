@@ -63,7 +63,7 @@ Output:
 |  2163986270   | Mobile Phone  |    49   |    23   |  31
 |  ...    | ...  |       ...   |        ...   |      ...
 
-### Request with 3 metrics and 3 dimensions
+### Request with 3 metrics and 2 dimensions
 ```
 aa.set_report_suite(report_suite_id = report_suite_id)
 aa.add_metric(metric_name= 'metrics/visits')
