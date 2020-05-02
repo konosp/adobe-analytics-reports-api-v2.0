@@ -76,8 +76,7 @@ class analytics_client:
         jwtPayloadJson['iss'] = self.adobe_org_id
         jwtPayloadJson['sub'] = self.subject_account
         jwtPayloadJson[self.experience_cloud_metascope] = True
-        jwtPayloadJson['aud'] = os.path.join(
-            self.adobe_auth_host, 'c', self.client_id)
+        jwtPayloadJson['aud'] = '/'.join([self.adobe_auth_host, 'c', self.client_id])
         jwtPayloadJson["exp"] = expiration + timedelta(minutes=30)
 
         return jwtPayloadJson
