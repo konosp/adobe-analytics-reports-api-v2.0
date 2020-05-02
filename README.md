@@ -1,6 +1,10 @@
 # Adobe Analytics Python package 
 Download Reports data utilising the Adobe.io version 2.0 API.
 
+![](https://github.com/konosp/adobe-analytics-reports-api-v2.0/workflows/Package%20Testing/badge.svg)
+
+For more Digital Analytics related reading, check https://analyticsmayhem.com
+
 # Requirements
 
 ## Adobe.io access
@@ -95,6 +99,3 @@ Known missing features:
 - No support for segments
 - No support for custom sorting
 - Not much customisation on the private key location
-
-# Reading
-If you are interested to read more, have a look at http://analyticsmayhem.com
