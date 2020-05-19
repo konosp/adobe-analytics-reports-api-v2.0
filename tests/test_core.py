@@ -33,7 +33,7 @@ def test_client_constructor():
     client = _generate_adobe_client()
     
     assert client.adobe_auth_host == 'https://ims-na1.adobelogin.com'
-    assert client.adobe_auth_url == os.path.join(client.adobe_auth_host, 'ims/exchange/jwt')
+    assert client.adobe_auth_url == '/'.join([client.adobe_auth_host, 'ims/exchange/jwt'])
     assert client.adobe_org_id == test_adobe_org_id
     assert client.subject_account == test_subject_account
 
@@ -419,4 +419,35 @@ def test_add_dimension():
     assert ['fake_dimension'] == client.dimensions
     client.add_dimension('fake_dimension_2')
     assert 'fake_dimension' == client.report_object['dimension']
+
+def test_add_global_segment():
+    client = _generate_adobe_client()
+    client.add_global_segment('test_id_1')
+    client.add_global_segment('test_id_2')
+
+    #Case 2: Same dates
+    start_date = '2020-01-31'
+    end_date = '2020-01-31'
+    expected_date_format = '2020-01-31T00:00:00/2020-02-01T00:00:00'
+
+    expected_global_filters = [
+            {
+                "type":"dateRange",
+                "dateRange":expected_date_format
+            },
+            {
+                "type":"segment",
+                "segmentId":"test_id_1"
+            },
+            {
+                "type":"segment",
+                "segmentId":"test_id_2"
+            } 
+        ]
+    
+    assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
+
+    client.set_date_range(date_start = start_date, date_end = end_date)
+    assert expected_global_filters == client.report_object['globalFilters']
+
 
