@@ -45,15 +45,13 @@ class analytics_client:
 
 
         self.adobe_auth_host = 'https://ims-na1.adobelogin.com'
-        self.adobe_auth_url = os.path.join(
-            self.adobe_auth_host, 'ims/exchange/jwt')
+        self.adobe_auth_url = '/'.join([self.adobe_auth_host, 'ims/exchange/jwt'])
         self.adobe_org_id = adobe_org_id
         self.subject_account = subject_account
 
         self.client_id = client_id
         self.client_secret = client_secret
-        self.private_key_location = os.path.join(
-            os.path.expanduser('~'), private_key_location)
+        self.private_key_location = os.path.join(os.path.expanduser('~'), private_key_location)
         self.account_id = account_id
 
         self.experience_cloud_metascope = 'https://ims-na1.adobelogin.com/s/ent_analytics_bulk_ingest_sdk'
@@ -119,12 +117,7 @@ class analytics_client:
     def _generate_empty_report_object():
         report = {
             "rsid": "",
-            "globalFilters": [
-                {
-                    "type": "dateRange",
-                    "dateRange": ""
-                }
-            ],
+            "globalFilters": [],
             "metricContainer": {
                 "metrics": []
             },
@@ -415,6 +408,25 @@ class analytics_client:
         self.report_object['dimension'] = dimension_name
         self._set_report_setting('dimensionSort', sort)
 
+    def add_global_segment(self, segment_id = None):
+        '''
+        Add a global segment into the report request
+
+        A global segment is equivalent of adding a segment in the root of the panel in Adobe Workspace.
+        
+        Parameters
+        ----------
+
+        segment_id : string
+            Unique segment ID
+        '''
+        
+        if segment_id is not None:
+            segment_filter = {}
+            segment_filter['type'] = 'segment'
+            segment_filter['segmentId'] = segment_id
+            self.report_object['globalFilters'].append(segment_filter)
+
     def set_date_range(self, date_start, date_end):
         '''
         Set the start and end date.
@@ -433,7 +445,12 @@ class analytics_client:
         '''
 
         formated_date_range = self._format_date_range(date_start=date_start, date_end=date_end)
-        self.report_object['globalFilters'][0]['dateRange'] = formated_date_range
+        date_range_globabl_filter =  {
+            "type": "dateRange",
+            "dateRange": formated_date_range
+        }
+        self.report_object['globalFilters'].append(date_range_globabl_filter)
+        # self.report_object['globalFilters'][0]['dateRange'] = formated_date_range
 
     def set_limit(self, rows_limit):
         self._set_report_setting('limit', rows_limit)
