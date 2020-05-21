@@ -69,7 +69,11 @@ class analytics_client:
         private_key = keyfile.read()
         return private_key
 
-    def _get_jwtPayload(self, expiration=datetime.utcnow()):
+    def _get_jwtPayload(self, expiration = None ):
+
+        if expiration is None:
+            expiration = datetime.utcnow()
+
         jwtPayloadJson = {}
         jwtPayloadJson['iss'] = self.adobe_org_id
         jwtPayloadJson['sub'] = self.subject_account
