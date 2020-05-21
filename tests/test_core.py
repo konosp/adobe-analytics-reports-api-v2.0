@@ -49,12 +49,7 @@ def test_client_constructor():
 def test_empty_report_object():
     expected_report_object = {
             "rsid": '',
-            "globalFilters": [
-                {
-                    "type": "dateRange",
-                    "dateRange": ''
-                }
-            ],
+            "globalFilters": [],
             "metricContainer": {
                 "metrics": []
             },
@@ -137,6 +132,7 @@ def test_format_date_range():
 
     assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
     
+    client.report_object = client._generate_empty_report_object()
     client.set_date_range(start_date, end_date)
     assert client.report_object['globalFilters'][0]['dateRange'] == expected_date_format
 
@@ -144,9 +140,9 @@ def test_format_date_range():
     start_date = '2020-01-31'
     end_date = '2020-01-31'
     expected_date_format = '2020-01-31T00:00:00/2020-02-01T00:00:00'
-
     assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
 
+    client.report_object = client._generate_empty_report_object()
     client.set_date_range(start_date, end_date)
     assert client.report_object['globalFilters'][0]['dateRange'] == expected_date_format
 
@@ -432,17 +428,17 @@ def test_add_global_segment():
 
     expected_global_filters = [
             {
-                "type":"dateRange",
-                "dateRange":expected_date_format
-            },
-            {
                 "type":"segment",
                 "segmentId":"test_id_1"
             },
             {
                 "type":"segment",
                 "segmentId":"test_id_2"
-            } 
+            }, 
+            {
+                "type":"dateRange",
+                "dateRange" : expected_date_format
+            }
         ]
     
     assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)

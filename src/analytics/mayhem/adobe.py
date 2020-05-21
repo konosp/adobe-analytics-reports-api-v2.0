@@ -117,12 +117,7 @@ class analytics_client:
     def _generate_empty_report_object():
         report = {
             "rsid": "",
-            "globalFilters": [
-                {
-                    "type": "dateRange",
-                    "dateRange": ""
-                }
-            ],
+            "globalFilters": [],
             "metricContainer": {
                 "metrics": []
             },
@@ -450,7 +445,12 @@ class analytics_client:
         '''
 
         formated_date_range = self._format_date_range(date_start=date_start, date_end=date_end)
-        self.report_object['globalFilters'][0]['dateRange'] = formated_date_range
+        date_range_globabl_filter =  {
+            "type": "dateRange",
+            "dateRange": formated_date_range
+        }
+        self.report_object['globalFilters'].append(date_range_globabl_filter)
+        # self.report_object['globalFilters'][0]['dateRange'] = formated_date_range
 
     def set_limit(self, rows_limit):
         self._set_report_setting('limit', rows_limit)
