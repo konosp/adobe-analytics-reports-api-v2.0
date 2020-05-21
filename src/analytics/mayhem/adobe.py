@@ -56,8 +56,7 @@ class analytics_client:
 
         self.experience_cloud_metascope = 'https://ims-na1.adobelogin.com/s/ent_analytics_bulk_ingest_sdk'
 
-        self.analytics_url = "https://analytics.adobe.io/api/{}/reports".format(
-            self.account_id)
+        self.analytics_url = "https://analytics.adobe.io/api/{}/reports".format(self.account_id)
 
         self.report_object = self._generate_empty_report_object()
         self.dimensions = []
