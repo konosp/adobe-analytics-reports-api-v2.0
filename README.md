@@ -48,14 +48,16 @@ aa = analytics_client( \
     account_id = account_id, \
     private_key_location = private_key_location)
 ```
+Set the date range of the report (format: YYYY-MM-DD)
+```
+aa.set_date_range(date_start = '2019-12-01', date_end= '2019-12-31')
+```
 ### Request with 3 metrics and 1 dimension
 ```
-aa.set_report_suite(report_suite_id = report_suite_id)
 aa.add_metric(metric_name= 'metrics/visits')
 aa.add_metric(metric_name= 'metrics/orders')
 aa.add_metric(metric_name= 'metrics/event1')
 aa.add_dimension(dimension_name = 'variables/mobiledevicetype')
-aa.set_date_range(date_start = '2019-12-01', date_end= '2019-12-31')
 data = aa.get_report()
 ```
 Output:
@@ -69,13 +71,11 @@ Output:
 
 ### Request with 3 metrics and 2 dimensions
 ```
-aa.set_report_suite(report_suite_id = report_suite_id)
 aa.add_metric(metric_name= 'metrics/visits')
 aa.add_metric(metric_name= 'metrics/orders')
 aa.add_metric(metric_name= 'metrics/event1')
 aa.add_dimension(dimension_name = 'variables/mobiledevicetype')
 aa.add_dimension(dimension_name = 'variables/lasttouchchannel')
-aa.set_date_range(date_start = '2019-12-01', date_end= '2019-12-31')
 data = aa.get_report_multiple_breakdowns()
 ```
 Output:
@@ -83,19 +83,24 @@ Each item in level 1 (i.e. Tablet) is broken down by the dimension in level 2 (i
 
 | itemId_lvl_1 | value_lvl_1 | itemId_lvl_2 |  value_lvl_2 | metrics/visits | metrics/orders  | metrics/event1 |
 | --- | --- | --- | --- | --- | --- | --- |
-|         0 |       Other |            1 |   Paid Search      | 233        | 39  |    10 |
-|         0 |       Other |            2 |   Natural Search      | 424        | 12  |    412 |
-|         0 |       Other |            3 |    Display        | 840           | 41  |      31 |
+|0 |Other |1 |Paid Search| 233| 39|10 |
+|0 |Other |2 |Natural Search| 424| 12  |412 |
+|0 |Other |3 |Display| 840| 41  |31 |
 | ... | ... | ... | ... | ... | ... | ... |
-| 1728229488 |      Tablet |            1 | Paid Search         | 80           | 12  |       41 |
-| 1728229488 |      Tablet |            2 |   Natural Search       | 50         | 41  |     21 |
+| 1728229488 |Tablet |1 | Paid Search| 80| 12  |41 |
+| 1728229488 |Tablet |2 |Natural Search| 50| 41  |21 |
 | ... | ... | ... | ... | ... | ... | ... |
 
+### Global segments
+To add a segment, you need the segment ID (currently only this option is supported). To obtain the ID, you need to activate the Adobe Analytics Workspace debugger (https://github.com/AdobeDocs/analytics-2.0-apis/blob/master/reporting-tricks.md). Then inspect the JSON request window and locate the segment ID under the 'globalFilters' object.
+
+To apply the segment:
+```
+aa.add_global_segment(segment_id = "s1689_5ea0ca222b1c1747636dc970")
+```
 ## Issues, Bugs and Suggestions:
 https://github.com/konosp/adobe-analytics-reports-api-v2.0/issues
 
 Known missing features:
 - No support for filtering
-- No support for segments
 - No support for custom sorting
-- Not much customisation on the private key location
