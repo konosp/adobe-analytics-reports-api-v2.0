@@ -5,9 +5,9 @@ name: Package Testing
 
 on:
   push:
-    branches: [ master ]
+    branches: [ master, stage ]
   pull_request:
-    branches: [ master ]
+    branches: [ master, stage ]
 
 jobs:
   build:
