@@ -237,9 +237,84 @@ def test_get_page_too_many_requests(mocker, monkeypatch):
     assert time.sleep.assert_called_once_with(1)
     '''
 
-def test_get_report():
-    # TODO: write test case
-    pass
+def test_get_report(monkeypatch):
+    
+
+    client = _generate_adobe_client()
+    client.add_metric('metric-1')
+    def mockreturn(custom_report_object = None):
+        mock_response_obj = {
+            "totalPages":1,
+            "firstPage":True,
+            "lastPage":True,
+            "numberOfElements":7,
+            "number":0,
+            "totalElements":7,
+            "columns":{
+                "dimension":{
+                    "id":"variables/daterangeday",
+                    "type":"time"
+                },
+                "columnIds":[
+                    "0"
+                ]
+            },
+            "rows":[
+                {
+                    "itemId":"1171131",
+                    "value":"Dec 31, 2017",
+                    "data":[
+                        794.0
+                    ]
+                },
+                {
+                    "itemId":"1180001",
+                    "value":"Jan 1, 2018",
+                    "data":[
+                        16558.0
+                    ]
+                },
+                {
+                    "itemId":"1180002",
+                    "value":"Jan 2, 2018",
+                    "data":[
+                        17381.0
+                    ]
+                }
+            ],
+            "summaryData":{
+                "totals":[
+                    104310.0
+                ]
+            }
+            }
+        mock_response_str = json.dumps(mock_response_obj)
+
+        # Generate fake response
+        adapter = requests_mock.Adapter()
+        adapter.register_uri('POST', 'mock://test.com/', status_code = 200, text = mock_response_str)
+        
+        session = requests.Session()
+        session.mount('mock', adapter)
+        
+        res = session.post('mock://test.com/')
+
+        return res
+    
+    monkeypatch.setattr(client, "_get_page", mockreturn)
+    page = client._get_page()
+    
+    tmp = client.get_report()
+
+    d = {
+        'itemId' : ['1171131', '1180001', '1180002'],
+        'value': ['Dec 31, 2017', 'Jan 1, 2018', 'Jan 2, 2018'], 
+        'metric-1': [794.0, 16558.0 , 17381.0]
+    }
+
+    expected_df = pd.DataFrame(data = d)
+    
+    assert expected_df.equals(tmp)
 
 def test_no_results(mocker):
     client = _generate_adobe_client()
