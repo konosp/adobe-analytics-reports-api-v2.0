@@ -254,6 +254,22 @@ class analytics_client:
         return df_data
 
     def get_report_multiple_breakdowns(self):
+        '''
+        Download report that contains multiple dimensions.
+
+        Initial report (top-level dimension) is downloaded using get_report() method. Subsequent dimensions
+        are downloaded using get_report_breakdown(). This is because sub-breakdowns rely on itemId.
+
+        Per remaining (non-top) dimensions, get_report_breakdown() is invoked.
+
+        Returns
+        -------
+        Pandas data frame object
+            Data frame with columns:
+            - itemId_lvl_*      : ID of the value per breakdown level
+            - value_lvl_*       : The row value for the particular breakdown combination
+            - metrics/{metric}  : Metric name is added in the API request i.e. metrics/visits
+        '''
         
         current_dimensions = []
         # Download 1st level data
@@ -269,7 +285,10 @@ class analytics_client:
             df_page = df_page.filter(regex='^itemId|^value', axis = 'columns')
         
         df_page = df_page.rename(
-                columns = {'itemId' : 'itemId_lvl_{}'.format(level),'value' : 'value_lvl_{}'.format(level)})    
+                columns = {
+                    'itemId' : 'itemId_lvl_{}'.format(level),
+                    'value' : 'value_lvl_{}'.format(level)}
+                )    
         
         for breakdown in remaining_dimensions:
             level = level + 1
@@ -289,6 +308,33 @@ class analytics_client:
         return df_page
 
     def get_report_breakdown(self, df_page, dimensions, current_level = None):
+        '''
+        Download broken-down dimensions of a single report.
+
+        For the existing dimensions in a data frame, iterate through all entries, generate a new report JSON object and
+        download the new row values and metrics. 
+        
+        This function is invoked multiple times based on the number of dimensions. 
+        Invoked once per dimension level. i.e. if 3 dimensions are added in the initalisation, it will be invoked twice; 
+        once for the 2nd level and once for the 3rd level dimension. 
+
+        Parameters
+        ----------
+        df_page : Pandas data frame
+            Contains a previously downloaded report
+
+        dimensions : array
+            Array of dimensions that have already been requested before and data has been downloaded. This assists in constructing the new 
+            JSON request object and apply the correct global filters
+
+        current_level : str - optional
+            The depth in the dimension tree. Populated only from level 2 and upwards
+
+        Returns
+        -------
+        response object
+            Response object as returned from the post request performed.
+       '''
         
         tmp_report_object = self.report_object
         
