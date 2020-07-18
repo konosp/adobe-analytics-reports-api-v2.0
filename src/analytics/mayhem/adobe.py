@@ -10,7 +10,7 @@ import pandas as pd
 
 class analytics_client:
 
-    def __init__(self, adobe_org_id, subject_account, client_id, client_secret, account_id, private_key_location='.ssh/private.key'):
+    def __init__(self, adobe_org_id, subject_account, client_id, client_secret, account_id, private_key_location='.ssh/private.key', debugging = False):
         '''
         Adobe Analytics Reports API client.
 
@@ -60,6 +60,7 @@ class analytics_client:
 
         self.report_object = self._generate_empty_report_object()
         self.dimensions = []
+        self.debugging = debugging
 
     def _read_private_key(self):
         # Request Access Key
@@ -227,13 +228,13 @@ class analytics_client:
                 raise ValueError('Response code error', page.text)
 
             status_code = page.status_code
-            
         return page
 
     def get_report(self, custom_report_object = None):
         self._set_page_number(0)
         # Get initial page
         data = self._get_page(custom_report_object)
+        self.logger(data.text)
         json_obj = json.loads(data.text)
         total_pages = json_obj['totalPages']
         current_page = 1
@@ -242,8 +243,10 @@ class analytics_client:
 
         # Download additional data if more than 1 pages are available
         while (total_pages > 1 and not is_last_page):
+            self.logger('Parsing page {}'.format(current_page)) 
             self._set_page_number(current_page)
             data = self._get_page(custom_report_object)
+            self.logger(data.text)
             json_obj = json.loads(data.text)
             is_last_page = json_obj['lastPage']
             current_page = current_page + 1
@@ -334,7 +337,10 @@ class analytics_client:
         -------
         response object
             Response object as returned from the post request performed.
-       '''
+        '''
+
+        self.logger('Downloading additional breakdown')
+        self.logger(dimensions)
         
         tmp_report_object = self.report_object
         
@@ -343,6 +349,7 @@ class analytics_client:
         for idx in range(len(dimensions)):
             dimension = dimensions[idx]
             parent_itemId = item_ids[idx]
+            self.logger('Dimension {}, Item ID: {}'.format(dimension,parent_itemId))
             tmp_report_object = self._add_breakdown_report_object(tmp_report_object, dimension, parent_itemId)
 
         results = self.get_report(custom_report_object=tmp_report_object)
@@ -551,3 +558,9 @@ class analytics_client:
         
         report_object['dimension'] = breakdown
         return report_object
+
+    def logger(self, message):
+        if (self.debugging):
+            print('Analytics Debugger Start')
+            print(message)
+            print('Analytics Debugger End')
