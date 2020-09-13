@@ -40,7 +40,7 @@ class analytics_client:
             Client Secret
 
         account_id : string
-            Account ID
+            Account ID (Global Company ID)
         
         private_key_location : string - default: '.ssh/private.key'
             Private Key location
@@ -121,7 +121,8 @@ class analytics_client:
     def _obtain_oauth_code(self):
         self._request_oauth_authorisation_code()
         input_text = 'Paste the Adobe login URL that includes the Auth Code (starting with "eyJ...")'
-        url_text = input(prompt = input_text)
+        print(input_text)
+        url_text = input()
         
         url_object = urlparse(url_text)
         auth_code = parse_qs(url_object.query)['code'][0]
@@ -135,30 +136,31 @@ class analytics_client:
             'code' : self._obtain_oauth_code()
         }
         res = requests.request("POST", url = self.adobe_auth_login_url , data = payload_data)
-        print(res.text)
-        import pdb; pdb.set_trace()
+        
+        if (res.status_code != 200):
+            raise ValueError('Response code error', res.text)
+
         return res.json()['access_token']
 
     def _get_request_headers(self):
 
-        if (self.auth_client_id):
-            analytics_header = json.loads(self._obtain_oauth_access_token())
-
-        else:
+        if (self.auth_client_id and not self.access_token):
+            self.access_token = self._obtain_oauth_access_token()
+        elif self.client_id:
             self.access_token = self._renew_access_token()
 
-            analytics_header = {
-                "X-Api-Key": (self.client_id or self.auth_client_id),
-                "x-proxy-global-company-id": self.account_id,
-                "Authorization": "Bearer " + self.access_token,
-                "Accept": "application/json",
-                "Content-Type": "application/json"
-            }
+        analytics_header = {
+            "X-Api-Key": (self.client_id or self.auth_client_id),
+            "x-proxy-global-company-id": self.account_id,
+            "Authorization": "Bearer " + self.access_token,
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
 
         return analytics_header
 
     def _authenticate(self):
-        self.request_headers = self._get_request_headers()
+        self.access_token = self._obtain_oauth_access_token()
 
     @staticmethod
     def _generate_empty_report_object():
@@ -492,6 +494,9 @@ class analytics_client:
         self.report_object['settings'] = self._add_key_to_dict(
             self.report_object['settings'], setting_item)
         self.report_object['settings'][setting_item] = '{}'.format(value)
+
+    def clean_report_object(self):
+        self.report_object = self._generate_empty_report_object()
 
     @staticmethod
     def _add_key_to_dict(dict_obj, key):
