@@ -14,7 +14,7 @@ from urllib.parse import urlencode
 
 class analytics_client:
 
-    def __init__(self, adobe_org_id = None, subject_account = None, client_id = None, auth_client_id = None, client_secret = None, account_id = None, private_key_location='.ssh/private.key'):
+    def __init__(self, adobe_org_id = None, subject_account = None, client_id = None, auth_client_id = None, client_secret = None, account_id = None, private_key_location='.ssh/private.key', debugging = False):
         '''
         Adobe Analytics Reports API client.
 
@@ -52,15 +52,13 @@ class analytics_client:
 
 
         self.adobe_auth_host = 'https://ims-na1.adobelogin.com'
-        self.adobe_auth_url = os.path.join(
-            self.adobe_auth_host, 'ims/exchange/jwt')
+        self.adobe_auth_url = '/'.join([self.adobe_auth_host, 'ims/exchange/jwt'])
         self.adobe_org_id = adobe_org_id
         self.subject_account = subject_account
 
         self.client_id = client_id
         self.client_secret = client_secret
-        self.private_key_location = os.path.join(
-            os.path.expanduser('~'), private_key_location)
+        self.private_key_location = os.path.join(os.path.expanduser('~'), private_key_location)
         self.account_id = account_id
 
         self.auth_client_id = auth_client_id
@@ -69,11 +67,11 @@ class analytics_client:
 
         self.experience_cloud_metascope = 'https://ims-na1.adobelogin.com/s/ent_analytics_bulk_ingest_sdk'
 
-        self.analytics_url = "https://analytics.adobe.io/api/{}/reports".format(
-            self.account_id)
+        self.analytics_url = "https://analytics.adobe.io/api/{}/reports".format(self.account_id)
 
         self.report_object = self._generate_empty_report_object()
         self.dimensions = []
+        self.debugging = debugging
 
     def _read_private_key(self):
         # Request Access Key
@@ -82,7 +80,11 @@ class analytics_client:
         private_key = keyfile.read()
         return private_key
 
-    def _get_jwtPayload(self, expiration=datetime.utcnow()):
+    def _get_jwtPayload(self, expiration = None ):
+
+        if expiration is None:
+            expiration = datetime.utcnow()
+
         jwtPayloadJson = {}
         jwtPayloadJson['iss'] = self.adobe_org_id
         jwtPayloadJson['sub'] = self.subject_account
@@ -166,12 +168,7 @@ class analytics_client:
     def _generate_empty_report_object():
         report = {
             "rsid": "",
-            "globalFilters": [
-                {
-                    "type": "dateRange",
-                    "dateRange": ""
-                }
-            ],
+            "globalFilters": [],
             "metricContainer": {
                 "metrics": []
             },
@@ -278,13 +275,13 @@ class analytics_client:
                 raise ValueError('Response code error', page.text)
 
             status_code = page.status_code
-            
         return page
 
     def get_report(self, custom_report_object = None):
         self._set_page_number(0)
         # Get initial page
         data = self._get_page(custom_report_object)
+        self.logger(data.text)
         json_obj = json.loads(data.text)
         total_pages = json_obj['totalPages']
         current_page = 1
@@ -293,8 +290,10 @@ class analytics_client:
 
         # Download additional data if more than 1 pages are available
         while (total_pages > 1 and not is_last_page):
+            self.logger('Parsing page {}'.format(current_page)) 
             self._set_page_number(current_page)
             data = self._get_page(custom_report_object)
+            self.logger(data.text)
             json_obj = json.loads(data.text)
             is_last_page = json_obj['lastPage']
             current_page = current_page + 1
@@ -305,6 +304,22 @@ class analytics_client:
         return df_data
 
     def get_report_multiple_breakdowns(self):
+        '''
+        Download report that contains multiple dimensions.
+
+        Initial report (top-level dimension) is downloaded using get_report() method. Subsequent dimensions
+        are downloaded using get_report_breakdown(). This is because sub-breakdowns rely on itemId.
+
+        Per remaining (non-top) dimensions, get_report_breakdown() is invoked.
+
+        Returns
+        -------
+        Pandas data frame object
+            Data frame with columns:
+            - itemId_lvl_*      : ID of the value per breakdown level
+            - value_lvl_*       : The row value for the particular breakdown combination
+            - metrics/{metric}  : Metric name is added in the API request i.e. metrics/visits
+        '''
         
         current_dimensions = []
         # Download 1st level data
@@ -320,7 +335,10 @@ class analytics_client:
             df_page = df_page.filter(regex='^itemId|^value', axis = 'columns')
         
         df_page = df_page.rename(
-                columns = {'itemId' : 'itemId_lvl_{}'.format(level),'value' : 'value_lvl_{}'.format(level)})    
+                columns = {
+                    'itemId' : 'itemId_lvl_{}'.format(level),
+                    'value' : 'value_lvl_{}'.format(level)}
+                )    
         
         for breakdown in remaining_dimensions:
             level = level + 1
@@ -340,6 +358,36 @@ class analytics_client:
         return df_page
 
     def get_report_breakdown(self, df_page, dimensions, current_level = None):
+        '''
+        Download broken-down dimensions of a single report.
+
+        For the existing dimensions in a data frame, iterate through all entries, generate a new report JSON object and
+        download the new row values and metrics. 
+        
+        This function is invoked multiple times based on the number of dimensions. 
+        Invoked once per dimension level. i.e. if 3 dimensions are added in the initalisation, it will be invoked twice; 
+        once for the 2nd level and once for the 3rd level dimension. 
+
+        Parameters
+        ----------
+        df_page : Pandas data frame
+            Contains a previously downloaded report
+
+        dimensions : array
+            Array of dimensions that have already been requested before and data has been downloaded. This assists in constructing the new 
+            JSON request object and apply the correct global filters
+
+        current_level : str - optional
+            The depth in the dimension tree. Populated only from level 2 and upwards
+
+        Returns
+        -------
+        response object
+            Response object as returned from the post request performed.
+        '''
+
+        self.logger('Downloading additional breakdown')
+        self.logger(dimensions)
         
         tmp_report_object = self.report_object
         
@@ -348,6 +396,7 @@ class analytics_client:
         for idx in range(len(dimensions)):
             dimension = dimensions[idx]
             parent_itemId = item_ids[idx]
+            self.logger('Dimension {}, Item ID: {}'.format(dimension,parent_itemId))
             tmp_report_object = self._add_breakdown_report_object(tmp_report_object, dimension, parent_itemId)
 
         results = self.get_report(custom_report_object=tmp_report_object)
@@ -462,6 +511,25 @@ class analytics_client:
         self.report_object['dimension'] = dimension_name
         self._set_report_setting('dimensionSort', sort)
 
+    def add_global_segment(self, segment_id = None):
+        '''
+        Add a global segment into the report request
+
+        A global segment is equivalent of adding a segment in the root of the panel in Adobe Workspace.
+        
+        Parameters
+        ----------
+
+        segment_id : string
+            Unique segment ID
+        '''
+        
+        if segment_id is not None:
+            segment_filter = {}
+            segment_filter['type'] = 'segment'
+            segment_filter['segmentId'] = segment_id
+            self.report_object['globalFilters'].append(segment_filter)
+
     def set_date_range(self, date_start, date_end):
         '''
         Set the start and end date.
@@ -480,7 +548,12 @@ class analytics_client:
         '''
 
         formated_date_range = self._format_date_range(date_start=date_start, date_end=date_end)
-        self.report_object['globalFilters'][0]['dateRange'] = formated_date_range
+        date_range_globabl_filter =  {
+            "type": "dateRange",
+            "dateRange": formated_date_range
+        }
+        self.report_object['globalFilters'].append(date_range_globabl_filter)
+        # self.report_object['globalFilters'][0]['dateRange'] = formated_date_range
 
     def set_limit(self, rows_limit):
         self._set_report_setting('limit', rows_limit)
@@ -535,3 +608,9 @@ class analytics_client:
         
         report_object['dimension'] = breakdown
         return report_object
+
+    def logger(self, message):
+        if (self.debugging):
+            print('Analytics Debugger Start')
+            print(message)
+            print('Analytics Debugger End')

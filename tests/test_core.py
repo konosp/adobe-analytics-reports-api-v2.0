@@ -28,12 +28,74 @@ def _generate_adobe_client():
         account_id= test_account_id)
     return client
 
+
+def mockreturn(custom_report_object = None):
+    
+    mock_response_obj = {
+        "totalPages":1,
+        "firstPage":True,
+        "lastPage":True,
+        "numberOfElements":7,
+        "number":0,
+        "totalElements":7,
+        "columns":{
+            "dimension":{
+                "id":"variables/daterangeday",
+                "type":"time"
+            },
+            "columnIds":[
+                "0"
+            ]
+        },
+        "rows":[
+            {
+                "itemId":"1171131",
+                "value":"Dec 31, 2017",
+                "data":[
+                    794.0
+                ]
+            },
+            {
+                "itemId":"1180001",
+                "value":"Jan 1, 2018",
+                "data":[
+                    16558.0
+                ]
+            },
+            {
+                "itemId":"1180002",
+                "value":"Jan 2, 2018",
+                "data":[
+                    17381.0
+                ]
+            }
+        ],
+        "summaryData":{
+            "totals":[
+                104310.0
+            ]
+        }
+        }
+    mock_response_str = json.dumps(mock_response_obj)
+
+    # Generate fake response
+    adapter = requests_mock.Adapter()
+    adapter.register_uri('POST', 'mock://test.com/', status_code = 200, text = mock_response_str)
+    
+    session = requests.Session()
+    session.mount('mock', adapter)
+    
+    res = session.post('mock://test.com/')
+
+    return res
+
+
 def test_client_constructor():
 
     client = _generate_adobe_client()
     
     assert client.adobe_auth_host == 'https://ims-na1.adobelogin.com'
-    assert client.adobe_auth_url == os.path.join(client.adobe_auth_host, 'ims/exchange/jwt')
+    assert client.adobe_auth_url == '/'.join([client.adobe_auth_host, 'ims/exchange/jwt'])
     assert client.adobe_org_id == test_adobe_org_id
     assert client.subject_account == test_subject_account
 
@@ -49,12 +111,7 @@ def test_client_constructor():
 def test_empty_report_object():
     expected_report_object = {
             "rsid": '',
-            "globalFilters": [
-                {
-                    "type": "dateRange",
-                    "dateRange": ''
-                }
-            ],
+            "globalFilters": [],
             "metricContainer": {
                 "metrics": []
             },
@@ -137,6 +194,7 @@ def test_format_date_range():
 
     assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
     
+    client.report_object = client._generate_empty_report_object()
     client.set_date_range(start_date, end_date)
     assert client.report_object['globalFilters'][0]['dateRange'] == expected_date_format
 
@@ -144,9 +202,9 @@ def test_format_date_range():
     start_date = '2020-01-31'
     end_date = '2020-01-31'
     expected_date_format = '2020-01-31T00:00:00/2020-02-01T00:00:00'
-
     assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
 
+    client.report_object = client._generate_empty_report_object()
     client.set_date_range(start_date, end_date)
     assert client.report_object['globalFilters'][0]['dateRange'] == expected_date_format
 
@@ -219,31 +277,58 @@ def test_get_page(mocker, monkeypatch):
     assert page.text == test_response_text_success   
 
 def test_get_page_too_many_requests(mocker, monkeypatch):
-    # mock reading private key
-    '''client = _generate_adobe_client()
-    client._get_request_headers = mocker.Mock(return_value = 'test headers')
+    # client = _generate_adobe_client()
+    # # client = 
+    # monkeypatch.setattr(client, '_get_request_headers', value = 'test headers')
 
-    test_response_text_fail = '{"error_code":"429050","message":"Too many requests"}'
+    # test_response_text_fail = '{"error_code":"429050","message":"Too many requests"}'
     
-    # Generate fake response -
-    adapter = requests_mock.Adapter()
-    adapter.register_uri('POST', 'mock://fail.com/', status_code = 429, text = test_response_text_fail)
+    # # Generate fake response -
+    # adapter = requests_mock.Adapter()
+    # adapter.register_uri('POST', 'mock://fail.com/', status_code = 429, text = test_response_text_fail)
     
-    session = requests.Session()
-    session.mount('mock', adapter)
-    test_response_fail = session.post('mock://fail.com/')
+    # session = requests.Session()
+    # session.mount('mock', adapter)
+    # test_response_fail = session.post('mock://fail.com/')
     
-    # Patch request with failed response
-    mocker.patch("requests.post", return_value = test_response_fail)
+    # # Patch request with failed response
+    # mocker.patch("requests.post", return_value = test_response_fail)
 
-    time.sleep = mocker.mock()
+    # monkeypatch.setattr(time, 'sleep', value = 'function_called')
     
-    assert time.sleep.assert_called_once_with(1)
-    '''
-
-def test_get_report():
-    # TODO: write test case
+    # assert time.sleep.assert_called_once_with(1)
+    # TODO:
     pass
+
+def test_get_report(mocker, monkeypatch):
+
+    client = _generate_adobe_client()
+    client.add_metric('metric-1')
+    
+    monkeypatch.setattr(client, "_get_page", mockreturn)
+    
+    tmp = client.get_report()
+
+    d = {
+        'itemId' : ['1171131', '1180001', '1180002'],
+        'value': ['Dec 31, 2017', 'Jan 1, 2018', 'Jan 2, 2018'], 
+        'metric-1': [794.0, 16558.0 , 17381.0]
+    }
+
+    expected_df = pd.DataFrame(data = d)
+    
+    assert expected_df.equals(tmp)
+
+def test_get_report_multiple_breakdowns():
+    # TODO
+    pass
+
+def test_get_report_breakdown(monkeypatch):
+    client = _generate_adobe_client()
+
+    monkeypatch.setattr(client, "_get_page", mockreturn)
+    # TODO
+    pass 
 
 def test_no_results(mocker):
     client = _generate_adobe_client()
@@ -419,4 +504,35 @@ def test_add_dimension():
     assert ['fake_dimension'] == client.dimensions
     client.add_dimension('fake_dimension_2')
     assert 'fake_dimension' == client.report_object['dimension']
+
+def test_add_global_segment():
+    client = _generate_adobe_client()
+    client.add_global_segment('test_id_1')
+    client.add_global_segment('test_id_2')
+
+    #Case 2: Same dates
+    start_date = '2020-01-31'
+    end_date = '2020-01-31'
+    expected_date_format = '2020-01-31T00:00:00/2020-02-01T00:00:00'
+
+    expected_global_filters = [
+            {
+                "type":"segment",
+                "segmentId":"test_id_1"
+            },
+            {
+                "type":"segment",
+                "segmentId":"test_id_2"
+            }, 
+            {
+                "type":"dateRange",
+                "dateRange" : expected_date_format
+            }
+        ]
+    
+    assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
+
+    client.set_date_range(date_start = start_date, date_end = end_date)
+    assert expected_global_filters == client.report_object['globalFilters']
+
 
