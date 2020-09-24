@@ -7,10 +7,14 @@ import os
 import requests
 import pandas as pd
 
+import webbrowser
+from urllib.parse import urlparse
+from urllib.parse import parse_qs
+from urllib.parse import urlencode
 
 class analytics_client:
 
-    def __init__(self, adobe_org_id, subject_account, client_id, client_secret, account_id, private_key_location='.ssh/private.key', debugging = False):
+    def __init__(self, adobe_org_id = None, subject_account = None, client_id = None, auth_client_id = None, client_secret = None, account_id = None, private_key_location='.ssh/private.key', debugging = False):
         '''
         Adobe Analytics Reports API client.
 
@@ -29,11 +33,14 @@ class analytics_client:
         client_id : string
             Client ID
 
+        auth_client_id : string
+            OAuth2 Client ID
+
         client_secret : string
             Client Secret
 
         account_id : string
-            Account ID
+            Account ID (Global Company ID)
         
         private_key_location : string - default: '.ssh/private.key'
             Private Key location
@@ -53,6 +60,10 @@ class analytics_client:
         self.client_secret = client_secret
         self.private_key_location = os.path.join(os.path.expanduser('~'), private_key_location)
         self.account_id = account_id
+
+        self.auth_client_id = auth_client_id
+        self.redirect_uri = 'https://www.adobe.com'
+        self.adobe_auth_login_url = '{}/ims/token/v1'.format(self.adobe_auth_host)
 
         self.experience_cloud_metascope = 'https://ims-na1.adobelogin.com/s/ent_analytics_bulk_ingest_sdk'
 
@@ -92,7 +103,9 @@ class analytics_client:
         jwttoken = jwt.encode(jwtPayloadJson, private_key, algorithm='RS256')
 
         accessTokenRequestPayload = {
-            'client_id': self.client_id, 'client_secret': self.client_secret, 'jwt_token': jwttoken
+            'client_id': self.client_id,
+            'client_secret': self.client_secret, 
+            'jwt_token': jwttoken
         }
         result = requests.post(self.adobe_auth_url,
                                data=accessTokenRequestPayload)
@@ -103,12 +116,43 @@ class analytics_client:
 
         return resultjson['access_token']
 
+    def _request_oauth_authorisation_code(self):
+        url = '{}/ims/authorize?client_id={}&redirect_uri={}&scope=openid,AdobeID,read_organizations,additional_info.job_function,additional_info.projectedProductContext&response_type=code'.format(self.adobe_auth_host, self.auth_client_id, self.redirect_uri)
+        webbrowser.open(url)
+
+    def _obtain_oauth_code(self):
+        self._request_oauth_authorisation_code()
+        input_text = 'Paste the Adobe login URL that includes the Auth Code (starting with "eyJ...")'
+        print(input_text)
+        url_text = input()
+        
+        url_object = urlparse(url_text)
+        auth_code = parse_qs(url_object.query)['code'][0]
+        return auth_code
+
+    def _obtain_oauth_access_token(self):
+        payload_data = {
+            'grant_type' : 'authorization_code',
+            'client_id' : self.auth_client_id,
+            'client_secret' : self.client_secret,
+            'code' : self._obtain_oauth_code()
+        }
+        res = requests.request("POST", url = self.adobe_auth_login_url , data = payload_data)
+        
+        if (res.status_code != 200):
+            raise ValueError('Response code error', res.text)
+
+        return res.json()['access_token']
+
     def _get_request_headers(self):
 
-        self.access_token = self._renew_access_token()
+        if (self.auth_client_id and not self.access_token):
+            self.access_token = self._obtain_oauth_access_token()
+        elif self.client_id:
+            self.access_token = self._renew_access_token()
 
         analytics_header = {
-            "X-Api-Key": self.client_id,
+            "X-Api-Key": (self.client_id or self.auth_client_id),
             "x-proxy-global-company-id": self.account_id,
             "Authorization": "Bearer " + self.access_token,
             "Accept": "application/json",
@@ -116,6 +160,9 @@ class analytics_client:
         }
 
         return analytics_header
+
+    def _authenticate(self):
+        self.access_token = self._obtain_oauth_access_token()
 
     @staticmethod
     def _generate_empty_report_object():
@@ -520,6 +567,9 @@ class analytics_client:
         self.report_object['settings'] = self._add_key_to_dict(
             self.report_object['settings'], setting_item)
         self.report_object['settings'][setting_item] = '{}'.format(value)
+
+    def clean_report_object(self):
+        self.report_object = self._generate_empty_report_object()
 
     @staticmethod
     def _add_key_to_dict(dict_obj, key):
