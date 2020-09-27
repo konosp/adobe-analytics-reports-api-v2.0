@@ -36,23 +36,28 @@ pip install analytics-mayhem-adobe
 After you have configured the integration and downloaded the package, the following setup is needed:
 ```
 from analytics.mayhem.adobe import analytics_client
+import os
 
-adobe_org_id = '<adobe org id>@AdobeOrg'
-subject_account = '<technical account id>@techacct.adobe.com'
-client_id = '<client id>'
-client_secret = '<client secret>'
-private_key_location = '.ssh/adobe-auth/private.key'
-global_company_id = '<global company id>'
-report_suite_id = '<report suite>'
+ADOBE_ORG_ID = os.environ['ADOBE_ORG_ID']
+SUBJECT_ACCOUNT = os.environ['SUBJECT_ACCOUNT']
+CLIENT_ID = os.environ['CLIENT_ID']
+CLIENT_SECRET = os.environ['CLIENT_SECRET']
+PRIVATE_KEY_LOCATION = os.environ['PRIVATE_KEY_LOCATION']
+GLOBAL_COMPANY_ID = os.environ['GLOBAL_COMPANY_ID']
+REPORT_SUITE_ID = os.environ['REPORT_SUITE_ID']
 ```
 Next initialise the Adobe client:
 ```
-aa = analytics_client( \
-    adobe_org_id = adobe_org_id, \
-    subject_account = subject_account, \
-    client_id = client_id, client_secret = client_secret, \
-    account_id = global_company_id, \
-    private_key_location = private_key_location)
+aa = analytics_client(
+        adobe_org_id = ADOBE_ORG_ID, 
+        subject_account = SUBJECT_ACCOUNT, 
+        client_id = CLIENT_ID, 
+        client_secret = CLIENT_SECRET,
+        account_id = GLOBAL_COMPANY_ID, 
+        private_key_location = PRIVATE_KEY_LOCATION
+)
+
+aa.set_report_suite(report_suite_id = REPORT_SUITE_ID)
 ```
 #### Initial setup - OAuth
 
