@@ -77,7 +77,7 @@ Perform the authentication
 aa._authenticate()
 ```
 This will open a new window and will request you to login to Adobe. After you complete the login process, you will be redirect to the URL you configured as redirect URI during the Adobe Integration creation process. If everything is done correctly, final URL will have a URL query string parameter in the format of `www.adobe.com/?code=eyJ....`. Copy the full URL and paste it in the input text.
-For a demo notebook, please refer to the [Jupyter Notebook - OAuth example](./examples/OAuth Demo.ipynb)
+For a demo notebook, please refer to the [Jupyter Notebook - OAuth example](examples/OAuth%20Demo.ipynb)
 
 
 ### Report Configurations
