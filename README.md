@@ -5,9 +5,11 @@ Download Reports data utilising the Adobe.io version 2.0 API.
 
 For more Digital Analytics related reading, check https://analyticsmayhem.com
 
-# Requirements
+# Authentication methods supported by the package:
+1. JWT
+2. OAuth (tested only through Jupyter Notebook!)
 
-## Adobe.io access
+## JWT Requirements & Adobe.io access
 In order to run the package, first you need to gain access to a service account from Adobe.io. The method used is JWT authentication. More instructions on how to create the integration at: https://www.adobe.io/authentication/auth-methods.html#!AdobeDocs/adobeio-auth/master/JWT/JWT.md. After you have completed the integration, you will need to have available the following information:
 - Organization ID (issuer): It is in the format of < organisation id >@AdobeOrg
 - Technical Account ID: < tech account id >@techacct.adobe.com 
@@ -18,15 +20,19 @@ In order to run the package, first you need to gain access to a service account 
 
 Make sure that the integration is associated with an Adobe Analytics product profile that is granted access to the necessary metrics and dimensions.
 
-## Package installation
+## OAuth Requirements
+To perform an OAuth authentication you need to create an integration at the Adobe I/O Console as described in the guide by Adobe at https://github.com/AdobeDocs/analytics-2.0-apis/blob/master/create-oauth-client.md. The result of the integration provides the following information:
+- Client ID (API Key)
+- Client Secret
+
+### Package installation
 ```
 pip install analytics-mayhem-adobe
 ```
 
-# Samples
+### Samples
 
-## Initial setup
-
+#### Initial setup - JWT
 After you have configured the integration and downloaded the package, the following setup is needed:
 ```
 from analytics.mayhem.adobe import analytics_client
@@ -36,7 +42,7 @@ subject_account = '<technical account id>@techacct.adobe.com'
 client_id = '<client id>'
 client_secret = '<client secret>'
 private_key_location = '.ssh/adobe-auth/private.key'
-account_id = '<account id>'
+global_company_id = '<global company id>'
 report_suite_id = '<report suite>'
 ```
 Next initialise the Adobe client:
@@ -45,14 +51,41 @@ aa = analytics_client( \
     adobe_org_id = adobe_org_id, \
     subject_account = subject_account, \
     client_id = client_id, client_secret = client_secret, \
-    account_id = account_id, \
+    account_id = global_company_id, \
     private_key_location = private_key_location)
 ```
+#### Initial setup - OAuth
+
+Import the package and initiate the required parameters
+```
+from analytics.mayhem.adobe import analytics_client
+
+client_id = '<client id>'
+client_secret = '<client secret>'
+global_company_id = '<global company id>'
+```
+Initialise the Adobe client:
+```
+aa = analytics_client(
+        auth_client_id = client_id, 
+        client_secret = client_secret,
+        account_id = global_company_id
+)
+```
+Perform the authentication
+```
+aa._authenticate()
+```
+This will open a new window and will request you to login to Adobe. After you complete the login process, you will be redirect to the URL you configured as redirect URI during the Adobe Integration creation process. If everything is done correctly, final URL will have a URL query string parameter in the format of `www.adobe.com/?code=eyJ....`. Copy the full URL and paste it in the input text.
+For a demo notebook, please refer to the [Jupyter Notebook - OAuth example](./examples/OAuth Demo.ipynb)
+
+
+### Report Configurations
 Set the date range of the report (format: YYYY-MM-DD)
 ```
 aa.set_date_range(date_start = '2019-12-01', date_end= '2019-12-31')
 ```
-### Request with 3 metrics and 1 dimension
+#### Request with 3 metrics and 1 dimension
 ```
 aa.add_metric(metric_name= 'metrics/visits')
 aa.add_metric(metric_name= 'metrics/orders')
@@ -69,7 +102,7 @@ Output:
 |  2163986270   | Mobile Phone  |    49   |    23   |  31
 |  ...    | ...  |       ...   |        ...   |      ...
 
-### Request with 3 metrics and 2 dimensions
+#### Request with 3 metrics and 2 dimensions:
 ```
 aa.add_metric(metric_name= 'metrics/visits')
 aa.add_metric(metric_name= 'metrics/orders')
@@ -91,14 +124,14 @@ Each item in level 1 (i.e. Tablet) is broken down by the dimension in level 2 (i
 | 1728229488 |Tablet |2 |Natural Search| 50| 41  |21 |
 | ... | ... | ... | ... | ... | ... | ... |
 
-### Global segments
+#### Global segments
 To add a segment, you need the segment ID (currently only this option is supported). To obtain the ID, you need to activate the Adobe Analytics Workspace debugger (https://github.com/AdobeDocs/analytics-2.0-apis/blob/master/reporting-tricks.md). Then inspect the JSON request window and locate the segment ID under the 'globalFilters' object.
 
 To apply the segment:
 ```
 aa.add_global_segment(segment_id = "s1689_5ea0ca222b1c1747636dc970")
 ```
-## Issues, Bugs and Suggestions:
+# Issues, Bugs and Suggestions:
 https://github.com/konosp/adobe-analytics-reports-api-v2.0/issues
 
 Known missing features:
