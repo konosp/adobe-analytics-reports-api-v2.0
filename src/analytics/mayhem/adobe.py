@@ -265,7 +265,8 @@ class analytics_client:
                 headers=analytics_header,
                 data=json.dumps(report_object)
             )
-
+            self.write_log('request_object', json.dumps(report_object))
+            self.write_log('response', page.text)
             if (page.status_code == 429):
                 print('Response code error: {}'.format(page.text))
                 print('Delaying for next request')
@@ -614,3 +615,12 @@ class analytics_client:
             print('Analytics Debugger Start')
             print(message)
             print('Analytics Debugger End')
+
+    def write_log(self, filename, message):
+        
+        if (not os.path.exists('logs')):
+            os.mkdir('logs')
+
+        fil = open("logs/{}-{}.json".format(filename,datetime.now().isoformat()), "a")  # append mode 
+        fil.write(message) 
+        fil.close() 
