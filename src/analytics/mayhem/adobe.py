@@ -265,8 +265,10 @@ class analytics_client:
                 headers=analytics_header,
                 data=json.dumps(report_object)
             )
-            self.write_log('request_object', json.dumps(report_object))
-            self.write_log('response', page.text)
+            if (self.debugging):
+                self.write_log('request_object', json.dumps(report_object))
+                self.write_log('response', page.text)
+                
             if (page.status_code == 429):
                 print('Response code error: {}'.format(page.text))
                 print('Delaying for next request')
