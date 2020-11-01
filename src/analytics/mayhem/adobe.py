@@ -265,7 +265,10 @@ class analytics_client:
                 headers=analytics_header,
                 data=json.dumps(report_object)
             )
-
+            if (self.debugging):
+                self.write_log('request_object', json.dumps(report_object))
+                self.write_log('response', page.text)
+                
             if (page.status_code == 429):
                 print('Response code error: {}'.format(page.text))
                 print('Delaying for next request')
@@ -445,17 +448,18 @@ class analytics_client:
         '''
 
         metricNames = self._get_metrics()
+        data_json = data.json()
         # Convert to DF to easily obtain the data column
-        df_response_data = pd.DataFrame(data.json()['rows'])
+        df_response_data = pd.DataFrame(data_json['rows'])
         # Convert metrics to DF into dedicated columns. Column header is the metric ID
-        if data.json()['totalPages'] > 0:
+        if (data_json['totalPages'] > 0) and (df_response_data.shape != (0,0)):
             metrics_column = df_response_data.data.tolist()
             df_metrics_data = pd.DataFrame(metrics_column, index=df_response_data.index)
         else:
             
             metrics_column = []
             
-            idx = data.json()['columns']['columnIds']
+            idx = data_json['columns']['columnIds']
             for i in idx:
                 metrics_column.append(0)
             df_response_data = pd.DataFrame({'itemId': '0', 'value': 'Unspecified', 'data': metrics_column })
@@ -614,3 +618,12 @@ class analytics_client:
             print('Analytics Debugger Start')
             print(message)
             print('Analytics Debugger End')
+
+    def write_log(self, filename, message):
+        
+        if (not os.path.exists('logs')):
+            os.mkdir('logs')
+
+        fil = open("logs/{}-{}.json".format(filename,datetime.now().isoformat()), "a")  # append mode 
+        fil.write(message) 
+        fil.close() 
