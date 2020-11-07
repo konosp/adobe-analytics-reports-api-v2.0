@@ -265,9 +265,9 @@ def test_get_page(mocker, monkeypatch):
     # Patch request and fail response
     mocker.patch("requests.post", return_value = test_response_fail)
 
-    with pytest.raises(ValueError) as e:
+    with pytest.raises(requests.exceptions.HTTPError) as e:
         assert client._get_page()
-    assert str(e) == "<ExceptionInfo ValueError('Response code error', '{}') tblen=2>".format(test_response_text_fail)
+    assert str(e) == "<ExceptionInfo HTTPError('400 Client Error: None for url: mock://fail.com/') tblen=3>"
     
     # Patch request and success response
     mocker.patch("requests.post", return_value = test_response_success)
