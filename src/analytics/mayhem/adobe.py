@@ -112,7 +112,7 @@ class analytics_client:
         resultjson = json.loads(result.text)
 
         if (result.status_code != 200):
-            raise ValueError('Response code error', result.text)
+            raise ValueError('Response code error', result.status_code)
 
         return resultjson['access_token']
 
@@ -140,7 +140,7 @@ class analytics_client:
         res = requests.request("POST", url = self.adobe_auth_login_url , data = payload_data)
         
         if (res.status_code != 200):
-            raise ValueError('Response code error', res.text)
+            raise ValueError('Response code error', res.status_code)
 
         return res.json()['access_token']
 
@@ -263,21 +263,26 @@ class analytics_client:
             page = requests.post(
                 self.analytics_url,
                 headers=analytics_header,
-                data=json.dumps(report_object)
+                data=json.dumps(report_object),
+                timeout = 360
             )
             if (self.debugging):
                 self.write_log('request_object', json.dumps(report_object))
                 self.write_log('response', page.text)
                 
             if (page.status_code == 429):
-                print('Response code error: {}'.format(page.text))
-                print('Delaying for next request')
-                time.sleep(time_delay)
-                time_delay = time_delay * 2
+                # Response code 429
+                # {"error_code":"429050","message":"Too many requests"}
+                print('Response code error: {}'.format(page.status_code))
+                
             elif (page.status_code != 200):
-                raise ValueError('Response code error', page.text)
+                page.raise_for_status()
+                # raise ValueError('Response code error', page.status_code)
 
-            status_code = page.status_code
+            status_code = page.status_code  
+            time.sleep(time_delay)
+            time_delay = time_delay * 2
+
         return page
 
     def get_report(self, custom_report_object = None):
