@@ -10,6 +10,7 @@ import pytest
 # from src.adobe_api.adobe_api import aa_client
 from src.analytics.mayhem.adobe import analytics_client
 import pandas as pd
+from pandas._testing import assert_frame_equal
 
 test_adobe_org_id= 'fake_org_id'
 test_subject_account = 'fake_subject_account'
@@ -335,7 +336,7 @@ def test_no_results(mocker):
     client = _generate_adobe_client()
     client._get_request_headers = mocker.Mock(return_value = 'test headers')
 
-    no_results_json = '{"totalPages":0,"firstPage":true,"lastPage":false,"numberOfElements":0,"number":0,"totalElements":0,"columns":{"dimension":{"id":"variables/evar65","type":"string"},"columnIds":["0","1","2"]},"rows":[],"summaryData":{"filteredTotals":[0.0,0.0,0.0],"totals":[0.0,0.0,0.0]}}'
+    no_results_json = '{"totalPages":1,"firstPage":false,"lastPage":false,"numberOfElements":0,"number":0,"totalElements":0,"columns":{"dimension":{"id":"variables/evar65","type":"string"},"columnIds":["0","1","2"]},"rows":[],"summaryData":{"filteredTotals":[0.0,0.0,0.0],"totals":[0.0,0.0,0.0]}}'
 
     # Generate fake response -
     adapter = requests_mock.Adapter()
@@ -352,6 +353,21 @@ def test_no_results(mocker):
 
     assert page.status_code == 200
     assert page.text == no_results_json   
+
+    # Adding metrics to the report_object    
+    client.add_metric(metric_name = 'metrics/visits')
+    client.add_metric(metric_name = 'metrics/orders')
+    client.add_metric(metric_name = 'metrics/random')
+
+    expected_output_df = pd.DataFrame({
+        'itemId':['0'],
+        'value':['Unspecified'],
+        'metrics/visits':[0],
+        'metrics/orders':[0],
+        'metrics/random':[0]
+        })
+
+    assert_frame_equal(client.format_output(page), expected_output_df)
 
 def test_get_metrics():
 
