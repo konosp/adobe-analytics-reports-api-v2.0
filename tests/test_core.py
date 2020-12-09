@@ -191,9 +191,11 @@ def test_format_date_range():
     #Case 1: different dates
     start_date ='2017-01-31'
     end_date = '2020-12-31'
+    start_hour = 0
+    end_hour = 0
     expected_date_format = '2017-01-31T00:00:00/2021-01-01T00:00:00'
 
-    assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
+    assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date, hour_start = start_hour, hour_end = end_hour)
     
     client.report_object = client._generate_empty_report_object()
     client.set_date_range(start_date, end_date)
@@ -202,8 +204,22 @@ def test_format_date_range():
     #Case 2: Same dates
     start_date = '2020-01-31'
     end_date = '2020-01-31'
-    expected_date_format = '2020-01-31T00:00:00/2020-02-01T00:00:00'
-    assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date)
+    start_hour = 0
+    end_hour = 5
+    expected_date_format = '2020-01-31T00:00:00/2020-02-01T05:00:00'
+    assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date, hour_start = start_hour, hour_end = end_hour)
+
+    client.report_object = client._generate_empty_report_object()
+    client.set_date_range(start_date, end_date)
+    assert client.report_object['globalFilters'][0]['dateRange'] == expected_date_format
+
+    #Case 3: Same dates - different hours
+    start_date = '2020-01-31'
+    end_date = '2020-01-31'
+    start_hour = 4
+    end_hour = 15
+    expected_date_format = '2020-01-31T04:00:00/2020-02-01T15:00:00'
+    assert expected_date_format == client._format_date_range(date_start = start_date, date_end = end_date, hour_start = start_hour, hour_end = end_hour)
 
     client.report_object = client._generate_empty_report_object()
     client.set_date_range(start_date, end_date)
