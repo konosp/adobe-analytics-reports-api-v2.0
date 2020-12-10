@@ -194,7 +194,14 @@ class analytics_client:
         Note: The end-date provided is inclusive. For that reason it is converted to the start of the next day. 
 
         Example: If the report needs to end on 1st of March 2020, then the value is convered into 2020-03-02T00:00:00.000
-        
+
+        The hours are being added on top of the existing day. Examples:
+        - If the starting date is 26/11/2020 and starting hour is 13, then the starting time point will be 2020-11-26T13:00:00.000 
+        - (!) If the ending date is 29/11/2020 and ending hour is 17, then the ending time point will be 2020-11-29T17:00:00.000 
+        - (!) If the ending date is 29/11/2020 and ending hour is 0, then the ending time point will be 2020-11-30T00:00:00.000 
+
+        Note: If the ending hour is <> 0, then the full day is captured. Otherwise it captures only the portion of the day.
+
         Parameters
         ----------
         date_start : string
@@ -219,8 +226,10 @@ class analytics_client:
         date_start = date_start.isoformat('T')
 
         date_end = datetime.strptime(date_end, '%Y-%m-%d')
-
-        date_end = date_end + timedelta(hours= hour_end, minutes=00, seconds=00, milliseconds=999)
+        
+        if hour_end == 0:
+            hour_end = 24
+        date_end = date_end + timedelta(hours = hour_end, minutes=00, seconds=00, milliseconds=999)
         date_end = date_end.isoformat('T')
         final_date = '{}/{}'.format(date_start[:-7], date_end[:-7])
         return final_date
@@ -553,6 +562,9 @@ class analytics_client:
         The final value is saved in the JSON report object.
 
         Optionally the start hour of the start date and the end hour of the end date can be configured.
+        - If the hour_start parameter is set greater than 0, then the date range will start from that time slot onwards.
+        - If the hour_end parameter is not set, then only then the full day will be downloaded.
+        - If the hour_end parameter is set greater than 0, then only the portion of the last day will be downloaded.
         
         Parameters
         ----------

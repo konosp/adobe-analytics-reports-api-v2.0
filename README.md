@@ -90,6 +90,11 @@ Set the date range of the report (format: YYYY-MM-DD)
 ```
 aa.set_date_range(date_start = '2019-12-01', date_end= '2019-12-31')
 ```
+To configure specific hours for the start and end date:
+```
+aa.set_date_range(date_start='2020-12-01', date_end='2020-12-01', hour_start= 4, hour_end= 5 )
+```
+If `hour_end` is set, then only up to that hour in the last day data will be retrieved instead of the full day.
 #### Request with 3 metrics and 1 dimension
 ```
 aa.add_metric(metric_name= 'metrics/visits')
