@@ -312,6 +312,11 @@ class analytics_client:
 
         # Download additional data if more than 1 pages are available
         while (total_pages > 1 and not is_last_page):
+
+            if (custom_report_object is not None):
+                # Workaround - This is done because in multiple breakdowns, pagination does not work in sub-breakdowns.
+                custom_report_object['settings']['page'] = '{}'.format(current_page)
+
             self.logger('Parsing page {}'.format(current_page)) 
             self._set_page_number(current_page)
             data = self._get_page(custom_report_object)
