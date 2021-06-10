@@ -1,4 +1,4 @@
-pandas==1.0.3
+pandas==1.2.3
 requests==2.23.0
 PyJWT==1.7.1
 # requests-mock==1.7.0
